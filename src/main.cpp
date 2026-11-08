@@ -3,24 +3,43 @@
 constexpr size_t PIN = 13;
 constexpr size_t MIN_PULSE = 500;
 constexpr size_t MAX_PULSE = 2400;
+constexpr size_t UP_STATE = 180;
+constexpr unsigned long MOVE_DELAY_MS = 500;
+
+enum WaveState { IDLE, UP, DOWN };
+
+WaveState state = IDLE;
+int wavesLeft = 0;
+unsigned long lastMovement = 0;
 
 Servo servo;
 
-void setup() {
-    Serial.begin(115200);
-    servo.setPeriodHertz(50);
-    servo.attach(PIN, MIN_PULSE, MAX_PULSE);
+void startWave(int count) {
+    if (state != IDLE) return;
+
+    wavesLeft = count;
+    state = UP;
+    servo.write(UP_STATE);
+    lastMovement = millis();
 }
 
-void waveArm(size_t count) {
-    Serial.printf("waving %d times\n", count);
-    for(int i = 0; i < count; i++) {
-        Serial.printf("flip #%d\n", i);
-        servo.write(0);
-        delay(1000);
-        servo.write(90);
-        delay(1000);
+void updateWave() {
+    if (state == IDLE) return;
 
+    if(millis() - lastMovement < MOVE_DELAY_MS) return;
+
+    lastMovement = millis();
+
+    if(state == UP) {
+        servo.write(0);
+        state = DOWN;
+    } else {
+        if (--wavesLeft > 0) {
+            servo.write(180);
+            state = UP;
+        } else {
+            state = IDLE;
+        }
     }
 }
 
@@ -44,7 +63,6 @@ bool readWaveCount(size_t &out) {
 
 size_t askCount() {
     while(true) {
-        Serial.print("How many times should I wave? ");
 
         while (!Serial.available()) delay(20);
 
@@ -61,9 +79,18 @@ size_t askCount() {
     }
 }
 
+void setup() {
+    Serial.begin(115200);
+    servo.setPeriodHertz(50);
+    servo.attach(PIN, MIN_PULSE, MAX_PULSE);
+}
+
 void loop() {
-    size_t n;
-    if (readWaveCount(n)) {
-        waveArm(n);
+    size_t waveCount = 0;
+
+    updateWave();
+
+    if(readWaveCount(waveCount)) {
+        startWave(waveCount);
     }
 }
