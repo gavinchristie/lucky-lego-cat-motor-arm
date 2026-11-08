@@ -1,4 +1,6 @@
 #include <ESP32Servo.h>
+#include <WiFi.h>
+#include <WebServer.h>
 
 constexpr size_t PIN = 13;
 constexpr size_t MIN_PULSE = 500;
@@ -7,7 +9,6 @@ constexpr size_t UP_STATE = 180;
 constexpr unsigned long MOVE_DELAY_MS = 500;
 
 enum WaveState { IDLE, UP, DOWN };
-
 WaveState state = IDLE;
 int wavesLeft = 0;
 unsigned long lastMovement = 0;
@@ -83,6 +84,10 @@ void setup() {
     Serial.begin(115200);
     servo.setPeriodHertz(50);
     servo.attach(PIN, MIN_PULSE, MAX_PULSE);
+    
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    while (WiFi.status() != WL_CONNECTED) delay(250);
+    Serial.println(WiFi.localIP());
 }
 
 void loop() {
