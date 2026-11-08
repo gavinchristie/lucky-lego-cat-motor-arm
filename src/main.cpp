@@ -12,8 +12,9 @@ enum WaveState { IDLE, UP, DOWN };
 WaveState state = IDLE;
 int wavesLeft = 0;
 unsigned long lastMovement = 0;
-
 Servo servo;
+
+WebServer server(80);
 
 void startWave(int count) {
     if (state != IDLE) return;
@@ -80,22 +81,39 @@ size_t askCount() {
     }
 }
 
+void handleWave() {
+    int n = server.hasArg("n") ? server.arg("n").toInt() : 3;
+    if(n < 1 || n > 20) n = 3;
+    startWave(n);
+    server.send(200, "text/plain", "waving");
+}
+
 void setup() {
     Serial.begin(115200);
     servo.setPeriodHertz(50);
     servo.attach(PIN, MIN_PULSE, MAX_PULSE);
+
+    Serial.printf("SSID=%s, PASS=%s",WIFI_SSID, WIFI_PASS);
     
+    Serial.printf("Connecting to %s", WIFI_SSID);
+    WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
-    while (WiFi.status() != WL_CONNECTED) delay(250);
+
+    while (WiFi.status() != WL_CONNECTED) {
+        Serial.print('.');
+        delay(250);
+    }
     Serial.println(WiFi.localIP());
+
+    server.on("/wave", handleWave);
+    server.begin();
 }
 
 void loop() {
     size_t waveCount = 0;
 
+    server.handleClient();
+
     updateWave();
 
-    if(readWaveCount(waveCount)) {
-        startWave(waveCount);
-    }
 }
