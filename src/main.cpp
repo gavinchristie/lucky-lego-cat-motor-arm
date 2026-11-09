@@ -1,4 +1,5 @@
 #include <ESP32Servo.h>
+#include <LittleFS.h>
 #include <WiFi.h>
 #include <WebServer.h>
 
@@ -88,10 +89,26 @@ void handleWave() {
     server.send(200, "text/plain", "waving");
 }
 
+void handleRoot() {
+    File f = LittleFS.open("/index.html", "r");
+
+    if (!f) {
+        server.send(404, "text/plain", "index.html missing, run uploadfs");
+        return;
+    }
+
+    server.streamFile(f, "text/html");
+    f.close();
+}
+
 void setup() {
     Serial.begin(115200);
     servo.setPeriodHertz(50);
     servo.attach(PIN, MIN_PULSE, MAX_PULSE);
+
+    if(!LittleFS.begin(true)) {
+        Serial.println("LittleFS mount failed");
+    }
 
     Serial.printf("SSID=%s, PASS=%s",WIFI_SSID, WIFI_PASS);
     
@@ -105,6 +122,7 @@ void setup() {
     }
     Serial.println(WiFi.localIP());
 
+    server.on("/", handleRoot);
     server.on("/wave", handleWave);
     server.begin();
 }
